@@ -12,7 +12,10 @@ class HeadersFormatter(FormatterPlugin):
         Sorts headers by name while retaining relative
         order of multiple headers with the same name.
 
+        Header names are case-insensitive (RFC 9110), so they
+        are compared case-insensitively.
+
         """
         lines = headers.splitlines()
-        headers = sorted(lines[1:], key=lambda h: h.split(':')[0])
+        headers = sorted(lines[1:], key=lambda h: h.split(':')[0].lower())
         return '\r\n'.join(lines[:1] + headers)

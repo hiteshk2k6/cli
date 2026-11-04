@@ -19,6 +19,7 @@ from httpie.cli.argtypes import (
 from httpie.cli.definition import parser
 from httpie.encoding import UTF8
 from httpie.output.formatters.colors import get_lexer, PIE_STYLE_NAMES, BUNDLED_STYLES
+from httpie.output.formatters.headers import HeadersFormatter
 from httpie.status import ExitStatus
 from .fixtures import XML_DATA_RAW, XML_DATA_FORMATTED
 from .utils import COLOR, CRLF, HTTP_OK, MockEnvironment, http, DUMMY_URL, strip_colors
@@ -391,6 +392,41 @@ class TestFormatOptions:
         assert r_sorted != r_unsorted
         assert f'XXX: foo{CRLF}ZZZ: foo' in r_sorted
         assert f'ZZZ: foo{CRLF}XXX: foo' in r_unsorted
+
+    def test_header_sort_ignores_name_case(self):
+        r = http(
+            '--offline', '--print=H',
+            '--format-options', 'headers.sort:true',
+            'example.org', 'b-custom:2', 'C-Custom:3', 'A-CUSTOM:1',
+        )
+        assert CRLF.join([
+            'A-CUSTOM: 1',
+            'Accept: */*',
+            'Accept-Encoding: gzip, deflate, br',
+            'b-custom: 2',
+            'C-Custom: 3',
+            'Connection: keep-alive',
+        ]) in r
+
+    def test_header_sorting_keeps_order_of_repeated_mixed_case_fields(self):
+        # https://github.com/httpie/cli/issues/1960
+        formatter = HeadersFormatter(
+            format_options={'headers': {'sort': True}},
+        )
+        headers = CRLF.join([
+            'HTTP/1.1 200 OK',
+            'set-cookie: first=1',
+            'X-Z: last',
+            'Set-Cookie: second=2',
+            'accept: text/plain',
+        ])
+        assert formatter.format_headers(headers) == CRLF.join([
+            'HTTP/1.1 200 OK',
+            'accept: text/plain',
+            'set-cookie: first=1',
+            'Set-Cookie: second=2',
+            'X-Z: last',
+        ])
 
     @pytest.mark.parametrize(
         'options, expected_json',
